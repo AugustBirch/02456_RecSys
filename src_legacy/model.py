@@ -11,17 +11,16 @@ import numpy as np
 from sklearn.metrics import roc_auc_score
 from utils import *
 
-
-# Enable dynamic memory growth for GPUs
-gpus = tf.config.list_physical_devices('GPU')
-if gpus:
-    try:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-    except RuntimeError as e:
-        print(e)
-
 SIZE = "demo"
+# DEFINE ALL THE HYPERPARAMETERS
+embedding_dim = 300         # Dimension of the article embedding vectors
+num_heads = 16              # Number of attention heads in the attention layer
+attention_dim = 32          # Dimension of the attention space
+batch_size = 64             # Number of samples used in each training iteration
+epochs_num = 16             # Number of times the model will iterate over the entire training dataset
+initial_learning_rate=0.001 # Initial value of learning rate (learning rate is dynamically set by the scheduler)
+max_history_length = 32     # Maximum length of user history considered by the model
+max_articles_in_view = 10   # Maximum number of articles in a user's viewing session (if applicable)
 
 # Get the directory of the current script and move one level up
 BASE_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),'data')
@@ -42,7 +41,6 @@ df_train_history = pd.read_parquet(os.path.join(TRAIN_DIR, 'history.parquet'))
 df_train_behaviors = pd.read_parquet(os.path.join(TRAIN_DIR, 'behaviors.parquet'))
 df_train_articles = pd.read_parquet(os.path.join(ARTICLE_DIR, 'articles.parquet'))
 
-
 df_valid_history = pd.read_parquet(os.path.join(VALID_DIR, 'history.parquet'))
 df_valid_behaviors = pd.read_parquet(os.path.join(VALID_DIR, 'behaviors.parquet'))
 df_valid_articles = pd.read_parquet(os.path.join(ARTICLE_DIR, 'articles.parquet'))
@@ -50,6 +48,21 @@ df_valid_articles = pd.read_parquet(os.path.join(ARTICLE_DIR, 'articles.parquet'
 df_test_history = pd.read_parquet(os.path.join(TEST_DIR, 'history.parquet'))
 df_test_behaviors = pd.read_parquet(os.path.join(TEST_DIR, 'behaviors.parquet'))
 df_test_articles = pd.read_parquet(os.path.join(TEST_ARTICLES_DIR, 'articles.parquet'))
+
+print("Data loaded successfully")
+
+#print all heads
+# print(df_train_history.head())
+# print(df_train_behaviors.head())
+# print(df_train_articles.head())
+
+# print(df_valid_history.head())
+# print(df_valid_behaviors.head())
+# print(df_valid_articles.head())
+
+# print(df_test_history.head())
+# print(df_test_behaviors.head())
+# print(df_test_articles.head())
 
 # Ensure consistent data types for merging in train dataset
 df_train_behaviors['article_id'] = df_train_behaviors['article_id'].fillna('-1').astype(str)
@@ -60,18 +73,10 @@ df_valid_behaviors['article_id'] = df_valid_behaviors['article_id'].fillna('-1')
 df_valid_articles['article_id'] = df_valid_articles['article_id'].astype(str)
 
 # Ensure consistent data types for merging in test dataset
-# df_test_behaviors['article_id'] = df_test_behaviors['article_id'].fillna('-1').astype(str)
+# df_test_behaviors['article_id'] = df_test_behaviors['article_id'].fillna('-1').astype(str) # This is not necessary as the article_id is not used in the test dataset
 df_test_articles['article_id'] = df_test_articles['article_id'].astype(str)
 
-# Filter invalid rows from behaviors dataset
-df_train_behaviors = filter_invalid_clicked_articles(df_train_behaviors)
-df_valid_behaviors = filter_invalid_clicked_articles(df_valid_behaviors)
-# df_test_behaviors = filter_invalid_clicked_articles(df_test_behaviors)
-
-print("Data loaded successfully")
-
-# EMBEDDINGS OF ARTICLES
-print("Loading embeddings...")
+#### EMBEDDINGS OF ARTICLES  ####
 # Import the embedding fle provided by the competition organizers
 embedding_df = pd.read_parquet(EMBEDDING_DIR)
 
@@ -85,69 +90,28 @@ article_to_index = {article_id: idx for idx, article_id in enumerate(embedding_d
 num_articles = len(article_to_index)
 embedding_matrix = np.zeros((num_articles, embedding_dim))
 
-# Puopulate the embedding matrix
+print("Populating the embedding matrix...")
+# Populate the embedding matrix
 for idx, row in embedding_df.iterrows():
     embedding_matrix[article_to_index[row['article_id']]] = np.array(row['document_vector'])
-print("Embeddings loaded successfully")
+print("Embedding matrix populated successfully")
 
-
-# DEFINE ALL THE HYPERPARAMETERS
-embedding_dim = 300             # Dimension of the article embedding vectors
-num_heads = 16                  # Number of attention heads in the attention layer
-attention_dim = 32              # Dimension of the attention space
-batch_size = 64                 # Number of samples used in each training iteration
-epochs_num = 16                 # Number of times the model will iterate over the entire training dataset
-initial_learning_rate=0.001     # Initial value of learning rate (learning rate is dynamically set by the scheduler)
-max_history_length = 32         # Maximum length of user history considered by the model
-max_articles_in_view = 32       # Maximum number of articles in a user's viewing session (if applicable)
-popularity_window_hours = 48    # Number of hours to consider for popularity calculation
-top_N_popular_articles = 32     # Number of top popular articles to consider
-
-# Prepare train dataset
-train_user_histories_tensor, train_user_id_to_index = process_user_history(
-    df_train_history, article_to_index, embedding_matrix, max_history_length
-)
-
-train_dataset = prepare_data(
-    df_train_history, df_train_behaviors, df_train_articles,
-    article_to_index, embedding_matrix, max_history_length, batch_size=batch_size,
-    user_histories_tensor=train_user_histories_tensor,  # Pass user embeddings
-    user_id_to_index=train_user_id_to_index           # Pass user ID mapping
-)
-
-# Prepare validation dataset
-valid_user_histories_tensor, valid_user_id_to_index = process_user_history(
-    df_valid_history, article_to_index, embedding_matrix, max_history_length
-)
-
-validation_dataset = prepare_data(
-    df_valid_history, df_valid_behaviors, df_valid_articles,
-    article_to_index, embedding_matrix, max_history_length, batch_size=batch_size,
-    user_histories_tensor=valid_user_histories_tensor,  # Pass user embeddings
-    user_id_to_index=valid_user_id_to_index           # Pass user ID mapping
-)
-
-
+# Prepare the datasets
+print("Preparing the datasets...")
+train_dataset, train_user_histories_tensor, user_id_to_index = prepare_data(df_train_history, df_train_behaviors, df_train_articles, article_to_index, embedding_matrix, max_history_length, is_training=True)
+print("Train dataset prepared successfully")
+validation_dataset, _, _ = prepare_data(df_valid_history, df_valid_behaviors, df_valid_articles, article_to_index, embedding_matrix, max_history_length, is_training=False)
+print("Validation dataset prepared successfully")
+test_dataset, _, _ = prepare_data(df_test_history, df_test_behaviors, df_test_articles, article_to_index, embedding_matrix, max_history_length, is_training=False)
+print("Datasets prepared successfully")
 
 # Create a model instance
 model = NewsRecommendationModel(
-    user_histories_tensor=train_user_histories_tensor,
-    embedding_dim=embedding_dim,
-    num_heads=num_heads,
-    attention_dim=attention_dim
-)
-
-
-
-for data, labels in train_dataset.take(1):  # Debugging: Inspect one batch
-    print("Debugging Data Batch:")
-    print("User Embeddings Shape:", data[0].shape)  # Shape: (batch_size, max_history_length, embedding_dim)
-    print("Articles in View Shape:", data[1].shape)  # Shape: (batch_size, max_articles_in_view)
-    print("In-Session Embeddings Shape:", data[2].shape)  # Shape: (batch_size, max_history_length, embedding_dim)
-    print("Popularity Embeddings Shape:", data[3].shape)  # Shape: (batch_size, max_articles_in_view, embedding_dim)
-    print("Labels Shape:", labels.shape)  # Shape: (batch_size, max_articles_in_view)
-
-
+                                user_histories_tensor=train_user_histories_tensor,
+                                embedding_dim=embedding_dim,
+                                num_heads=num_heads,
+                                attention_dim=attention_dim
+                              )
 
 # Define the loss function
 loss_fn = tf.keras.losses.BinaryCrossentropy()

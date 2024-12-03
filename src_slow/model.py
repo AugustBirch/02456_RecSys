@@ -11,16 +11,6 @@ import numpy as np
 from sklearn.metrics import roc_auc_score
 from utils import *
 
-
-# Enable dynamic memory growth for GPUs
-gpus = tf.config.list_physical_devices('GPU')
-if gpus:
-    try:
-        for gpu in gpus:
-            tf.config.experimental.set_memory_growth(gpu, True)
-    except RuntimeError as e:
-        print(e)
-
 SIZE = "demo"
 
 # Get the directory of the current script and move one level up
@@ -42,7 +32,6 @@ df_train_history = pd.read_parquet(os.path.join(TRAIN_DIR, 'history.parquet'))
 df_train_behaviors = pd.read_parquet(os.path.join(TRAIN_DIR, 'behaviors.parquet'))
 df_train_articles = pd.read_parquet(os.path.join(ARTICLE_DIR, 'articles.parquet'))
 
-
 df_valid_history = pd.read_parquet(os.path.join(VALID_DIR, 'history.parquet'))
 df_valid_behaviors = pd.read_parquet(os.path.join(VALID_DIR, 'behaviors.parquet'))
 df_valid_articles = pd.read_parquet(os.path.join(ARTICLE_DIR, 'articles.parquet'))
@@ -62,11 +51,6 @@ df_valid_articles['article_id'] = df_valid_articles['article_id'].astype(str)
 # Ensure consistent data types for merging in test dataset
 # df_test_behaviors['article_id'] = df_test_behaviors['article_id'].fillna('-1').astype(str)
 df_test_articles['article_id'] = df_test_articles['article_id'].astype(str)
-
-# Filter invalid rows from behaviors dataset
-df_train_behaviors = filter_invalid_clicked_articles(df_train_behaviors)
-df_valid_behaviors = filter_invalid_clicked_articles(df_valid_behaviors)
-# df_test_behaviors = filter_invalid_clicked_articles(df_test_behaviors)
 
 print("Data loaded successfully")
 
@@ -99,67 +83,58 @@ batch_size = 64                 # Number of samples used in each training iterat
 epochs_num = 16                 # Number of times the model will iterate over the entire training dataset
 initial_learning_rate=0.001     # Initial value of learning rate (learning rate is dynamically set by the scheduler)
 max_history_length = 32         # Maximum length of user history considered by the model
-max_articles_in_view = 32       # Maximum number of articles in a user's viewing session (if applicable)
+max_articles_in_view = 10       # Maximum number of articles in a user's viewing session (if applicable)
 popularity_window_hours = 48    # Number of hours to consider for popularity calculation
-top_N_popular_articles = 32     # Number of top popular articles to consider
-
-# Prepare train dataset
-train_user_histories_tensor, train_user_id_to_index = process_user_history(
-    df_train_history, article_to_index, embedding_matrix, max_history_length
-)
-
-train_dataset = prepare_data(
-    df_train_history, df_train_behaviors, df_train_articles,
-    article_to_index, embedding_matrix, max_history_length, batch_size=batch_size,
-    user_histories_tensor=train_user_histories_tensor,  # Pass user embeddings
-    user_id_to_index=train_user_id_to_index           # Pass user ID mapping
-)
-
-# Prepare validation dataset
-valid_user_histories_tensor, valid_user_id_to_index = process_user_history(
-    df_valid_history, article_to_index, embedding_matrix, max_history_length
-)
-
-validation_dataset = prepare_data(
-    df_valid_history, df_valid_behaviors, df_valid_articles,
-    article_to_index, embedding_matrix, max_history_length, batch_size=batch_size,
-    user_histories_tensor=valid_user_histories_tensor,  # Pass user embeddings
-    user_id_to_index=valid_user_id_to_index           # Pass user ID mapping
-)
+top_N_popular_articles = 10     # Number of top popular articles to consider
 
 
+# Prepare datasets
+train_dataset, train_user_histories_tensor, user_id_to_index = prepare_data(df_train_history, df_train_behaviors, df_train_articles, article_to_index, embedding_matrix, max_history_length, popularity_window_hours, top_N_popular_articles, is_training=True)
+validation_dataset, _, _ = prepare_data(df_valid_history, df_valid_behaviors, df_valid_articles, article_to_index, embedding_matrix, max_history_length, popularity_window_hours, top_N_popular_articles, is_training=False)
 
 # Create a model instance
 model = NewsRecommendationModel(
-    user_histories_tensor=train_user_histories_tensor,
-    embedding_dim=embedding_dim,
-    num_heads=num_heads,
-    attention_dim=attention_dim
-)
-
-
-
-for data, labels in train_dataset.take(1):  # Debugging: Inspect one batch
-    print("Debugging Data Batch:")
-    print("User Embeddings Shape:", data[0].shape)  # Shape: (batch_size, max_history_length, embedding_dim)
-    print("Articles in View Shape:", data[1].shape)  # Shape: (batch_size, max_articles_in_view)
-    print("In-Session Embeddings Shape:", data[2].shape)  # Shape: (batch_size, max_history_length, embedding_dim)
-    print("Popularity Embeddings Shape:", data[3].shape)  # Shape: (batch_size, max_articles_in_view, embedding_dim)
-    print("Labels Shape:", labels.shape)  # Shape: (batch_size, max_articles_in_view)
-
-
+                                user_histories_tensor=train_user_histories_tensor,
+                                embedding_dim=embedding_dim,
+                                num_heads=num_heads,
+                                attention_dim=attention_dim
+                              )
 
 # Define the loss function
 loss_fn = tf.keras.losses.BinaryCrossentropy()
 
 # Define the scheduler (to dynamically set the optimal learning rate)
-lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+# lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
+#     initial_learning_rate=initial_learning_rate,
+#     decay_steps=10000,
+#     decay_rate=0.9)
+
+lr_schedule = tf.keras.optimizers.schedules.CosineDecay(
     initial_learning_rate=initial_learning_rate,
     decay_steps=10000,
-    decay_rate=0.9)
+    alpha=0.1
+)
+
+#### For testing gradients ####
+
+# # Initialize optimizer and loss function
+# loss_fn = tf.keras.losses.BinaryCrossentropy()
+# optimizer = tf.keras.optimizers.Adam(learning_rate=initial_learning_rate)
+
+# # Train the model
+# train_with_gradient_monitoring(
+#     model=model,
+#     dataset=train_dataset,
+#     validation_data=validation_dataset,
+#     optimizer=optimizer,
+#     loss_fn=loss_fn,
+#     epochs=epochs_num,
+#     log_interval=1000  # Log every 100 steps
+# )
+
 
 # Create optimizer using above scheduler
-optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
+optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule, clipnorm=1.0)
 
 # Define the callback (reduces the learning rate when the validation loss stops to decrease)
 reduce_lr = ReduceLROnPlateau(monitor='val_loss', factor=0.2,
@@ -177,3 +152,4 @@ model.fit(
     epochs=epochs_num,
     callbacks=[reduce_lr]
 )
+

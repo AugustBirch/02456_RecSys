@@ -3,3 +3,5 @@ pandas
 scikit-learn
 fastparquet
 pyarrow
+optuna
+optuna-integration[tfkeras]

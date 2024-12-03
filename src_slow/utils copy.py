@@ -153,25 +153,11 @@ def generate_session_labels(df_behaviors, article_to_index, embedding_matrix, ma
 
         # Popularity articles embeddings
         popularity_articles = row['popularity_articles']
-
-        #old 
-        # popularity_embeddings = [
-        #     embedding_matrix[article_to_index.get(article_id, 0)]
-        #     for article_id in popularity_articles
-        # ]
-        # popularity_embeddings = pad_or_truncate_list(popularity_embeddings, max_popularity_articles, np.zeros(embedding_matrix.shape[1]))
-
-        #new
         popularity_embeddings = [
             embedding_matrix[article_to_index.get(article_id, 0)]
             for article_id in popularity_articles
         ]
-        # Project to embedding_dim if needed
-        popularity_embeddings = pad_or_truncate_list(
-            popularity_embeddings, max_articles_in_view, np.zeros(model.embedding_dim)
-        )
-
-
+        popularity_embeddings = pad_or_truncate_list(popularity_embeddings, max_popularity_articles, np.zeros(embedding_matrix.shape[1]))
 
         # Existing code for article embeddings and labels
         embeddings = [
@@ -339,6 +325,7 @@ class UserEncoder(Model):
         self.softmax = layers.Softmax(axis=1)
 
     def call(self, inputs):
+
         # Self-attention layer
         attention_output = self.multi_head_attention(inputs, inputs)
         attention_output = self.layer_norm1(attention_output)
@@ -353,8 +340,7 @@ class UserEncoder(Model):
         attention_scores = self.attention_score_dense(additive_attention_output)
         attention_weights = self.softmax(attention_scores)
 
-        # Fix rank: Ensure output has consistent rank for concatenation
-        weighted_output = tf.reduce_sum(attention_output * attention_weights, axis=1)  # Now rank 3
+        weighted_output = tf.reduce_sum(attention_output * attention_weights, axis=1)
         return weighted_output
     
 class InSessionEncoder(Model):
@@ -393,12 +379,12 @@ class PopularityEncoder(Model):
         return popularity_representation
     
 class ClickPredictor(Model):
-    def __init__(self, input_dim, **kwargs):
+    def __init__(self, input_dim, dropout_rate1, dropout_rate2, **kwargs):
         super(ClickPredictor, self).__init__(**kwargs)
-        self.dense1 = layers.Dense(256, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001))
-        self.dropout1 = layers.Dropout(0.2)
+        self.dense1 = layers.Dense(input_dim, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001))
+        self.dropout1 = layers.Dropout(dropout_rate1)
         self.dense2 = layers.Dense(128, activation='relu')
-        self.dropout2 = layers.Dropout(0.2)
+        self.dropout2 = layers.Dropout(dropout_rate2)
         self.dense3 = layers.Dense(1, activation='sigmoid')
 
     def call(self, inputs):
@@ -410,7 +396,7 @@ class ClickPredictor(Model):
         return click_probability
 
 class NewsRecommendationModel(Model):
-    def __init__(self, user_histories_tensor, embedding_dim, num_heads, attention_dim, **kwargs):
+    def __init__(self, user_histories_tensor, embedding_dim, num_heads, attention_dim, dropout_rate1, dropout_rate2, **kwargs):
         super(NewsRecommendationModel, self).__init__(**kwargs)
         self.user_histories_tensor = user_histories_tensor
         self.user_encoder = UserEncoder(embedding_dim=embedding_dim, num_heads=num_heads, attention_dim=attention_dim)
@@ -425,27 +411,15 @@ class NewsRecommendationModel(Model):
 
         # Dense layer for user representation projection
         self.user_projection = layers.Dense(embedding_dim, activation='relu')
-        self.article_projection = layers.Dense(embedding_dim, activation="relu") #new
 
-        self.click_predictor = ClickPredictor(input_dim=embedding_dim)
+        self.click_predictor = ClickPredictor(input_dim=embedding_dim, dropout_rate1=dropout_rate1, dropout_rate2=dropout_rate2)
 
     def call(self, inputs):
         user_indices, article_embeddings, in_session_embeddings, popularity_embeddings = inputs
 
-        # Ensure user_indices is cast to int32
-        user_indices = tf.cast(user_indices, tf.int32)
-
-        # Project article embeddings to match user representation dimension
-        article_embeddings = self.article_projection(article_embeddings)  # Shape: (batch_size, num_articles, embedding_dim)#new
-
-
         # User representation
         user_histories = tf.gather(self.user_histories_tensor, user_indices)
-        user_representation = self.user_encoder(user_histories)  # Shape: (batch_size, max_history_length, embedding_dim)
-
-        # Fix user_representation shape: Reduce rank 5 to rank 3
-        if len(user_representation.shape) == 5:
-            user_representation = tf.reduce_mean(user_representation, axis=[2, 3])  # Average over extra dimensions
+        user_representation = self.user_encoder(user_histories)
 
         # In-session representation
         in_session_representation = self.in_session_encoder(in_session_embeddings)
@@ -453,15 +427,8 @@ class NewsRecommendationModel(Model):
         # Popularity representation
         popularity_representation = self.popularity_encoder(popularity_embeddings)
 
-        # Debugging: Check tensor shapes
-        print("User Representation Shape:", user_representation.shape)
-        print("In-Session Representation Shape:", in_session_representation.shape)
-        print("Popularity Representation Shape:", popularity_representation.shape)
-
-        # Combine user representations
-        combined_user_representation = tf.concat(
-            [user_representation, in_session_representation, popularity_representation], axis=-1
-        )  # Shape: (batch_size, combined_dim)
+        # Combining user representations
+        combined_user_representation = tf.concat([user_representation, in_session_representation, popularity_representation], axis=-1)  # Shape: (batch_size, combined_dim)
 
         # Projection to embedding_dim
         combined_user_representation = self.user_projection(combined_user_representation)  # Shape: (batch_size, embedding_dim)
@@ -488,178 +455,33 @@ class NewsRecommendationModel(Model):
         click_probabilities = tf.reshape(click_probabilities_flat, [batch_size, num_articles])  # Shape: (batch_size, num_articles)
 
         return click_probabilities
+    
+def prepare_data(df_history, df_behaviors, df_articles, article_to_index, embedding_matrix, max_history_length, popularity_window_hours, top_N_popular_articles, is_training=True):
 
+    # Compute temporal features
+    df_behaviors = compute_session_time_features(df_behaviors)
+    df_behaviors = compute_user_activity_features(df_behaviors)
+    df_behaviors = compute_article_age(df_behaviors, df_articles)
 
+    # Compute and add in-session history
+    in_session_histories = build_in_session_histories(df_behaviors)
+    df_behaviors['in_session_history'] = df_behaviors.index.map(in_session_histories)
 
-def filter_invalid_clicked_articles(df_behaviors):
-    """
-    Filter rows in df_behaviors where `article_ids_clicked` contains multiple articles.
-    """
-    # Ensure column exists
-    if 'article_ids_clicked' not in df_behaviors.columns:
-        raise KeyError("'article_ids_clicked' column not found in df_behaviors.")
+    # Compute popularity features
+    df_behaviors = compute_popularity_features(df_behaviors, popularity_window_hours, top_N_popular_articles)
 
-    # Count rows before filtering
-    total_rows = len(df_behaviors)
-
-    # Filter rows where article_ids_clicked contains only one or no article
-    valid_rows = df_behaviors['article_ids_clicked'].apply(
-        lambda x: isinstance(x, (list, np.ndarray)) and len(x) <= 1
-    )
-    df_filtered = df_behaviors[valid_rows].copy()
-
-    # Log the number of rows dropped
-    dropped_rows = total_rows - len(df_filtered)
-    print(f"Filtered out {dropped_rows} rows with invalid `article_ids_clicked` values.")
-
-    return df_filtered
-
-
-def process_user_history_for_batch(batch_history, article_to_index, embedding_matrix, max_history_length):
-    """
-    Process user histories dynamically for a given batch of user history.
-    This function embeds user history articles and pads/truncates them to the max_history_length.
-    """
-    article_embeddings = []
-
-    # Ensure 'article_id_fixed' exists
-    if 'article_id_fixed' not in batch_history.columns:
-        raise KeyError("'article_id_fixed' column not found in batch_history. Available columns are:"
-                       f" {batch_history.columns.tolist()}")
-
-    for article_ids in batch_history['article_id_fixed']:
-        # Safely handle cases where article_ids may be NaN or None
-        if not isinstance(article_ids, (list, np.ndarray)):
-            article_ids = []
-
-        # Collect embeddings for valid article IDs
-        embeddings = [
-            embedding_matrix[article_to_index[article_id]]
-            for article_id in article_ids if article_id in article_to_index
-        ]
-
-        # Pad or truncate to the fixed history length
-        if len(embeddings) > max_history_length:
-            embeddings = embeddings[:max_history_length]
-        elif len(embeddings) < max_history_length:
-            embeddings += [np.zeros(embedding_matrix.shape[1])] * (max_history_length - len(embeddings))
-
-        article_embeddings.append(embeddings)
-
-    # Convert to a NumPy array and ensure correct dtype
-    padded_array = np.array(article_embeddings, dtype=np.float32)
-
-    # Map user to index (useful for downstream tasks)
-    user_id_to_index = {user_id: idx for idx, user_id in enumerate(batch_history['user_id'].unique())}
-
-    return tf.convert_to_tensor(padded_array), user_id_to_index
-
-
-def data_generator(df_behaviors, df_articles, df_history, article_to_index, embedding_matrix, max_history_length, batch_size, user_histories_tensor, user_id_to_index):
-    max_articles_in_view = 10
-    embedding_dim = embedding_matrix.shape[1]
-
-    for i in range(0, len(df_behaviors), batch_size):
-        batch_behaviors = df_behaviors.iloc[i:i + batch_size]
-        in_session_histories = build_in_session_histories(batch_behaviors)
-
-        batch_behaviors = batch_behaviors.copy()  # Avoid SettingWithCopyWarning
-        batch_behaviors.loc[:, 'in_session_history'] = batch_behaviors.index.map(in_session_histories)
-
-        user_embeddings = []
-        articles_in_view_list = []
-        in_session_embeddings_list = []
-        popularity_embeddings_list = []
-        labels_list = []
-
-        for idx, row in batch_behaviors.iterrows():
-            user_id = row['user_id']
-            articles_in_view = row['article_ids_inview']
-            articles_clicked = row['article_ids_clicked']
-            in_session_history = row['in_session_history']
-            popularity_articles = row.get('popularity_articles', [])
-
-            if not isinstance(articles_in_view, (list, np.ndarray)):
-                articles_in_view = []
-            if not isinstance(articles_clicked, (list, np.ndarray)):
-                articles_clicked = []
-
-            articles_in_view = pad_or_truncate_list(articles_in_view, max_articles_in_view, 0)
-
-            user_embedding = user_histories_tensor[user_id_to_index[user_id]]
-
-            # Fix shape to rank 3 if user_embedding has higher rank
-            if len(user_embedding.shape) > 3:
-                user_embedding = tf.reduce_mean(user_embedding, axis=[-2, -1])  # Reduce last two dimensions
-            user_embeddings.append(user_embedding)
-
-            user_embeddings.append(user_embedding)
-
-            in_session_embeddings = [
-                embedding_matrix[article_to_index.get(article_id, 0)]
-                for article_id in in_session_history
-            ]
-            in_session_embeddings = pad_or_truncate_list(in_session_embeddings, max_history_length, np.zeros(embedding_dim))
-
-            popularity_embeddings = [
-                embedding_matrix[article_to_index.get(article_id, 0)]
-                for article_id in popularity_articles
-            ]
-            popularity_embeddings = pad_or_truncate_list(popularity_embeddings, max_articles_in_view, np.zeros(embedding_dim))
-
-            labels = np.isin(articles_in_view, list(articles_clicked)).astype(int)
-            labels = pad_or_truncate_list(labels, max_articles_in_view, 0)
-
-            articles_in_view_list.append(articles_in_view)
-            in_session_embeddings_list.append(in_session_embeddings)
-            popularity_embeddings_list.append(popularity_embeddings)
-            labels_list.append(labels)
-
-        yield (
-            (
-                np.array(user_embeddings),  # (batch_size, max_history_length, embedding_dim)
-                np.array(articles_in_view_list),  # (batch_size, 10)
-                np.array(in_session_embeddings_list),  # (batch_size, max_history_length, embedding_dim)
-                np.array(popularity_embeddings_list),  # (batch_size, 10, embedding_dim)
-            ),
-            np.array(labels_list)  # (batch_size, 10)
-        )
-
-
-def prepare_data(df_history, df_behaviors, df_articles, article_to_index, embedding_matrix,
-                 max_history_length, batch_size, user_histories_tensor, user_id_to_index):
-    """
-    Prepare tf.data.Dataset using the adjusted dynamic data generator.
-    """
-    generator_fn = lambda: data_generator(
-        df_behaviors=df_behaviors,
-        df_articles=df_articles,
-        df_history=df_history,
-        article_to_index=article_to_index,
-        embedding_matrix=embedding_matrix,
-        max_history_length=max_history_length,
-        batch_size=batch_size,
-        user_histories_tensor=user_histories_tensor,  # Pass tensor directly
-        user_id_to_index=user_id_to_index           # Pass mapping directly
+    # Prepare user histories
+    user_histories_tensor, user_id_to_index = process_user_history(
+        df_history, article_to_index, embedding_matrix, max_history_length
     )
 
-    dataset = tf.data.Dataset.from_generator(
-        generator_fn,
-        output_signature=(
-            (
-                tf.TensorSpec(shape=(None, max_history_length, embedding_matrix.shape[1]), dtype=tf.float32),  # User embeddings
-                tf.TensorSpec(shape=(None, 10), dtype=tf.int32),  # Articles in view
-                tf.TensorSpec(shape=(None, max_history_length, embedding_matrix.shape[1]), dtype=tf.float32),  # In-session embeddings
-                tf.TensorSpec(shape=(None, 10, embedding_matrix.shape[1]), dtype=tf.float32),  # Popularity embeddings
-            ),
-            tf.TensorSpec(shape=(None, 10), dtype=tf.int32),  # Labels
-        )
-    ).shuffle(10000).batch(batch_size).prefetch(tf.data.AUTOTUNE)
+    # Generate session labels including temporal features
+    df_labeled_sessions = generate_session_labels(df_behaviors, article_to_index, embedding_matrix)
 
-    return dataset
+    # Create dataset including temporal features
+    dataset = create_tf_dataset(df_labeled_sessions, user_id_to_index, batch_size=32)
 
-
-
+    return dataset, user_histories_tensor, user_id_to_index
 
 def prepare_test_data(df_history, df_behaviors, df_articles, article_to_index, embedding_matrix, max_history_length, popularity_window_hours, top_n):
     # Compute temporal features
@@ -686,6 +508,6 @@ def prepare_test_data(df_history, df_behaviors, df_articles, article_to_index, e
     )
 
     # Create dataset without labels
-    dataset = create_tf_dataset_for_prediction(df_sessions, user_id_to_index, batch_size=16)
+    dataset = create_tf_dataset_for_prediction(df_sessions, user_id_to_index, batch_size=32)
 
     return dataset, user_histories_tensor, user_id_to_index, df_sessions
