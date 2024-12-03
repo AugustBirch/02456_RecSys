@@ -1,0 +1,16 @@
+{"time":"2024-12-03T21:33:06.71836325+01:00","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2024-12-03T21:33:06.72220852+01:00","level":"INFO","msg":"created symlink","path":"/work3/s204129/DL2024/02456_RecSys/src_slow/wandb/run-20241203_213306-ceuvoi52/logs/debug-core.log"}
+{"time":"2024-12-03T21:33:06.837737928+01:00","level":"INFO","msg":"created new stream","id":"ceuvoi52"}
+{"time":"2024-12-03T21:33:06.838224066+01:00","level":"INFO","msg":"stream: started","id":"ceuvoi52"}
+{"time":"2024-12-03T21:33:06.838308812+01:00","level":"INFO","msg":"handler: started","stream_id":"ceuvoi52"}
+{"time":"2024-12-03T21:33:06.838478338+01:00","level":"INFO","msg":"sender: started","stream_id":"ceuvoi52"}
+{"time":"2024-12-03T21:33:06.838477322+01:00","level":"INFO","msg":"writer: Do: started","stream_id":"ceuvoi52"}
+{"time":"2024-12-03T21:33:07.19549949+01:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-12-03T21:33:07.664941984+01:00","level":"INFO","msg":"stream: closing","id":"ceuvoi52"}
+{"time":"2024-12-03T21:33:07.665036548+01:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-12-03T21:33:07.666383095+01:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-12-03T21:33:10.201357815+01:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2024-12-03T21:33:10.402328823+01:00","level":"INFO","msg":"handler: closed","stream_id":"ceuvoi52"}
+{"time":"2024-12-03T21:33:10.402348794+01:00","level":"INFO","msg":"sender: closed","stream_id":"ceuvoi52"}
+{"time":"2024-12-03T21:33:10.402348816+01:00","level":"INFO","msg":"writer: Close: closed","stream_id":"ceuvoi52"}
+{"time":"2024-12-03T21:33:10.405229323+01:00","level":"INFO","msg":"stream: closed","id":"ceuvoi52"}

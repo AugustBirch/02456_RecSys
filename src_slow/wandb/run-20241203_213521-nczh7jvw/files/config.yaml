@@ -1,0 +1,44 @@
+_wandb:
+    value:
+        cli_version: 0.18.7
+        m: []
+        python_version: 3.10.14
+        t:
+            "1":
+                - 2
+                - 3
+                - 5
+                - 35
+                - 53
+                - 55
+            "2":
+                - 2
+                - 3
+                - 5
+                - 35
+                - 53
+                - 55
+            "3":
+                - 16
+                - 23
+                - 55
+            "4": 3.10.14
+            "5": 0.18.7
+            "8":
+                - 5
+            "12": 0.18.7
+            "13": linux-x86_64
+attention_dim:
+    value: 48
+embedding_dim:
+    value: 300
+initial_learning_rate:
+    value: 0.0005053918041087782
+max_history_length:
+    value: 16
+num_heads:
+    value: 20
+popularity_window_hours:
+    value: 48
+top_N_popular_articles:
+    value: 10

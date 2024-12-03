@@ -1,15 +1,17 @@
 # Import required libraries
 import tensorflow as tf
+
+from tensorflow.keras import layers, Model
+from tensorflow.keras.layers import LayerNormalization, Dropout
+from tensorflow.keras.regularizers import l2
 from tensorflow.keras import layers, Model
 import pandas as pd
 import numpy as np
 from sklearn.metrics import roc_auc_score
-import os
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras import layers, Model
 from tensorflow.keras.layers import LayerNormalization, Dropout
-from tensorflow.keras.regularizers import l2
 from tensorflow.keras.metrics import AUC
 
 import optuna
@@ -310,11 +312,6 @@ def create_tf_dataset_for_prediction(df_sessions, user_id_to_index, batch_size):
 
     return dataset.batch(batch_size)
 
-import tensorflow as tf
-from tensorflow.keras import layers, Model
-from tensorflow.keras.layers import LayerNormalization, Dropout
-from tensorflow.keras.regularizers import l2
-
 class UserEncoder(Model):
     def __init__(self, embedding_dim, num_heads, attention_dim, dropout_rate=0.2, **kwargs):
         super(UserEncoder, self).__init__(**kwargs)
@@ -388,35 +385,28 @@ class PopularityEncoder(Model):
         return popularity_representation
     
 class ClickPredictor(Model):
-    def __init__(self, input_dim, dropout_rate1, dropout_rate2, **kwargs):
+    def __init__(self, input_dim, **kwargs):
         super(ClickPredictor, self).__init__(**kwargs)
         self.dense1 = layers.Dense(input_dim, activation='relu', kernel_regularizer=tf.keras.regularizers.l2(0.001))
-        self.dropout1 = layers.Dropout(rate=dropout_rate1)
+        self.dropout1 = layers.Dropout(rate=0.2)  # Fixed dropout rate
         self.dense2 = layers.Dense(128, activation='relu')
-        self.dropout2 = layers.Dropout(rate=dropout_rate2)
+        self.dropout2 = layers.Dropout(rate=0.3)  # Fixed dropout rate
         self.dense3 = layers.Dense(1, activation='sigmoid')
 
-    def call(self, inputs, dropout_rate1=None, dropout_rate2=None, training=None):
+    def call(self, inputs, training=None):
         x = self.dense1(inputs)
-        if training and dropout_rate1 is not None:
-            x = tf.nn.dropout(x, rate=dropout_rate1)
+        x = self.dropout1(x, training=training)
         x = self.dense2(x)
-        if training and dropout_rate2 is not None:
-            x = tf.nn.dropout(x, rate=dropout_rate2)
+        x = self.dropout2(x, training=training)
         click_probability = self.dense3(x)
         return click_probability
-
-
-
-
-
     
 import tensorflow as tf
 from tensorflow.keras import Model
 from tensorflow.keras.metrics import AUC
 
 class NewsRecommendationModel(Model):
-    def __init__(self, user_histories_tensor, embedding_dim, num_heads, attention_dim, dropout_rate1, dropout_rate2, **kwargs):
+    def __init__(self, user_histories_tensor, embedding_dim, num_heads, attention_dim, **kwargs):
         super(NewsRecommendationModel, self).__init__(**kwargs)
         self.user_histories_tensor = user_histories_tensor
         self.user_encoder = UserEncoder(embedding_dim=embedding_dim, num_heads=num_heads, attention_dim=attention_dim)
@@ -426,7 +416,7 @@ class NewsRecommendationModel(Model):
         # Self-attention layer
         self.self_attention = layers.MultiHeadAttention(num_heads=num_heads, key_dim=embedding_dim)
         self.layer_norm = LayerNormalization()
-        self.dropout_layer = Dropout(0.0)  # Default to no dropout, handled manually
+        self.dropout_layer = Dropout(rate=0.2)  # Fixed dropout rate
         self.embedding_dim = embedding_dim
 
         # Dense layers for projection
@@ -434,10 +424,9 @@ class NewsRecommendationModel(Model):
         self.article_projection = layers.Dense(embedding_dim, activation="relu")
 
         # Click predictor
-        self.click_predictor = ClickPredictor(input_dim=embedding_dim, dropout_rate1=dropout_rate1, dropout_rate2=dropout_rate2)
+        self.click_predictor = ClickPredictor(input_dim=embedding_dim)
 
-
-    def call(self, inputs, dropout_rate1=0.2, dropout_rate2=0.2, training=None):
+    def call(self, inputs, training=None):
         user_indices, article_embeddings, in_session_embeddings, popularity_embeddings = inputs
 
         # Project article embeddings
@@ -471,8 +460,7 @@ class NewsRecommendationModel(Model):
 
         # Apply self-attention
         attention_output = self.self_attention(sequence, sequence)
-        if training:
-            attention_output = tf.nn.dropout(attention_output, rate=dropout_rate1)
+        attention_output = self.dropout_layer(attention_output, training=training)
         attention_output = self.layer_norm(sequence + attention_output)
 
         # Extract article representations after attention (skipping the first element, which is the user representation)
@@ -480,14 +468,10 @@ class NewsRecommendationModel(Model):
 
         # Flatten and predict click probabilities
         article_flat = tf.reshape(article_attention_output, [-1, self.embedding_dim])
-        click_probabilities_flat = self.click_predictor(
-            article_flat, dropout_rate1=dropout_rate1, dropout_rate2=dropout_rate2, training=training
-        )
+        click_probabilities_flat = self.click_predictor(article_flat, training=training)
         click_probabilities = tf.reshape(click_probabilities_flat, [batch_size, num_articles])
 
         return click_probabilities
-
-
 
 def prepare_data(df_history, df_behaviors, df_articles, article_to_index, embedding_matrix, max_history_length, popularity_window_hours, top_N_popular_articles, is_training=True):
 

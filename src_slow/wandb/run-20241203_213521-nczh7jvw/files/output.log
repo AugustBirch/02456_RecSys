@@ -1,0 +1,84 @@
+[33m[W 2024-12-03 21:35:54,406][0m Trial 0 failed with parameters: {'embedding_dim': 300, 'num_heads': 20, 'attention_dim': 48, 'top_N_popular_articles': 10, 'max_history_length': 16, 'popularity_window_hours': 48, 'initial_learning_rate': 0.0005053918041087782} because of the following error: InternalError().[0m
+Traceback (most recent call last):
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/optuna/study/_optimize.py", line 197, in _run_trial
+    value_or_values = func(trial)
+  File "/work3/s204129/DL2024/02456_RecSys/src_slow/train.py", line 69, in objective
+    train_dataset, train_user_histories_tensor, user_id_to_index = prepare_data(
+  File "/work3/s204129/DL2024/02456_RecSys/src_slow/utils.py", line 499, in prepare_data
+    dataset = create_tf_dataset(df_labeled_sessions, user_id_to_index, batch_size=32)
+  File "/work3/s204129/DL2024/02456_RecSys/src_slow/utils.py", line 297, in create_tf_dataset
+    dataset = tf.data.Dataset.from_tensor_slices(
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/data/ops/dataset_ops.py", line 826, in from_tensor_slices
+    return from_tensor_slices_op._from_tensor_slices(tensors, name)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/data/ops/from_tensor_slices_op.py", line 25, in _from_tensor_slices
+    return _TensorSliceDataset(tensors, name=name)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/data/ops/from_tensor_slices_op.py", line 33, in __init__
+    element = structure.normalize_element(element)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/data/util/structure.py", line 134, in normalize_element
+    ops.convert_to_tensor(t, name="component_%d" % i, dtype=dtype))
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/profiler/trace.py", line 183, in wrapped
+    return func(*args, **kwargs)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/framework/ops.py", line 713, in convert_to_tensor
+    return tensor_conversion_registry.convert(
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/framework/tensor_conversion_registry.py", line 234, in convert
+    ret = conversion_func(value, dtype=dtype, name=name, as_ref=as_ref)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/framework/constant_tensor_conversion.py", line 29, in _constant_tensor_conversion_function
+    return constant_op.constant(v, dtype=dtype, name=name)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/ops/weak_tensor_ops.py", line 142, in wrapper
+    return op(*args, **kwargs)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/framework/constant_op.py", line 276, in constant
+    return _constant_impl(value, dtype, shape, name, verify_shape=False,
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/framework/constant_op.py", line 289, in _constant_impl
+    return _constant_eager_impl(ctx, value, dtype, shape, verify_shape)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/framework/constant_op.py", line 301, in _constant_eager_impl
+    t = convert_to_eager_tensor(value, ctx, dtype)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/framework/constant_op.py", line 108, in convert_to_eager_tensor
+    return ops.EagerTensor(value, ctx.device_name, dtype)
+tensorflow.python.framework.errors_impl.InternalError: Failed copying input tensor from /job:localhost/replica:0/task:0/device:CPU:0 to /job:localhost/replica:0/task:0/device:GPU:0 in order to run _EagerConst: Dst tensor is not initialized.
+[33m[W 2024-12-03 21:35:54,422][0m Trial 0 failed with value None.[0m
+Traceback (most recent call last):
+  File "/work3/s204129/DL2024/02456_RecSys/src_slow/train.py", line 132, in <module>
+    study.optimize(objective, n_trials=N_trials, timeout=3600)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/optuna/study/study.py", line 475, in optimize
+    _optimize(
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/optuna/study/_optimize.py", line 63, in _optimize
+    _optimize_sequential(
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/optuna/study/_optimize.py", line 160, in _optimize_sequential
+    frozen_trial = _run_trial(study, func, catch)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/optuna/study/_optimize.py", line 248, in _run_trial
+    raise func_err
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/optuna/study/_optimize.py", line 197, in _run_trial
+    value_or_values = func(trial)
+  File "/work3/s204129/DL2024/02456_RecSys/src_slow/train.py", line 69, in objective
+    train_dataset, train_user_histories_tensor, user_id_to_index = prepare_data(
+  File "/work3/s204129/DL2024/02456_RecSys/src_slow/utils.py", line 499, in prepare_data
+    dataset = create_tf_dataset(df_labeled_sessions, user_id_to_index, batch_size=32)
+  File "/work3/s204129/DL2024/02456_RecSys/src_slow/utils.py", line 297, in create_tf_dataset
+    dataset = tf.data.Dataset.from_tensor_slices(
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/data/ops/dataset_ops.py", line 826, in from_tensor_slices
+    return from_tensor_slices_op._from_tensor_slices(tensors, name)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/data/ops/from_tensor_slices_op.py", line 25, in _from_tensor_slices
+    return _TensorSliceDataset(tensors, name=name)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/data/ops/from_tensor_slices_op.py", line 33, in __init__
+    element = structure.normalize_element(element)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/data/util/structure.py", line 134, in normalize_element
+    ops.convert_to_tensor(t, name="component_%d" % i, dtype=dtype))
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/profiler/trace.py", line 183, in wrapped
+    return func(*args, **kwargs)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/framework/ops.py", line 713, in convert_to_tensor
+    return tensor_conversion_registry.convert(
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/framework/tensor_conversion_registry.py", line 234, in convert
+    ret = conversion_func(value, dtype=dtype, name=name, as_ref=as_ref)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/framework/constant_tensor_conversion.py", line 29, in _constant_tensor_conversion_function
+    return constant_op.constant(v, dtype=dtype, name=name)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/ops/weak_tensor_ops.py", line 142, in wrapper
+    return op(*args, **kwargs)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/framework/constant_op.py", line 276, in constant
+    return _constant_impl(value, dtype, shape, name, verify_shape=False,
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/framework/constant_op.py", line 289, in _constant_impl
+    return _constant_eager_impl(ctx, value, dtype, shape, verify_shape)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/framework/constant_op.py", line 301, in _constant_eager_impl
+    t = convert_to_eager_tensor(value, ctx, dtype)
+  File "/work3/s204129/DL2024/venv/lib/python3.10/site-packages/tensorflow/python/framework/constant_op.py", line 108, in convert_to_eager_tensor
+    return ops.EagerTensor(value, ctx.device_name, dtype)
+tensorflow.python.framework.errors_impl.InternalError: Failed copying input tensor from /job:localhost/replica:0/task:0/device:CPU:0 to /job:localhost/replica:0/task:0/device:GPU:0 in order to run _EagerConst: Dst tensor is not initialized.

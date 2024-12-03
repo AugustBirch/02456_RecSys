@@ -2,7 +2,7 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 
 import tensorflow as tf
-
+import wandb
 
 def check_gpu():
     # Check if TensorFlow can detect GPUs
@@ -35,5 +35,7 @@ def check_gpu():
         print("No GPUs detected by TensorFlow. Please check your GPU setup.")
 
 if __name__ == "__main__":
-    print(f"TensorFlow version: {tf.__version__}")
-    check_gpu()
+    # print(f"TensorFlow version: {tf.__version__}")
+    # check_gpu()
+    wandb.init(project="news-recommendation")
+

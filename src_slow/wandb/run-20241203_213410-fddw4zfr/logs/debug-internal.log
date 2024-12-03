@@ -1,0 +1,16 @@
+{"time":"2024-12-03T21:34:11.005097198+01:00","level":"INFO","msg":"using version","core version":"0.18.7"}
+{"time":"2024-12-03T21:34:11.007733574+01:00","level":"INFO","msg":"created symlink","path":"/work3/s204129/DL2024/02456_RecSys/src_slow/wandb/run-20241203_213410-fddw4zfr/logs/debug-core.log"}
+{"time":"2024-12-03T21:34:11.1220301+01:00","level":"INFO","msg":"created new stream","id":"fddw4zfr"}
+{"time":"2024-12-03T21:34:11.12248504+01:00","level":"INFO","msg":"stream: started","id":"fddw4zfr"}
+{"time":"2024-12-03T21:34:11.122509202+01:00","level":"INFO","msg":"handler: started","stream_id":"fddw4zfr"}
+{"time":"2024-12-03T21:34:11.122729263+01:00","level":"INFO","msg":"sender: started","stream_id":"fddw4zfr"}
+{"time":"2024-12-03T21:34:11.122730597+01:00","level":"INFO","msg":"writer: Do: started","stream_id":"fddw4zfr"}
+{"time":"2024-12-03T21:34:11.403103836+01:00","level":"INFO","msg":"Starting system monitor"}
+{"time":"2024-12-03T21:34:44.296366922+01:00","level":"INFO","msg":"stream: closing","id":"fddw4zfr"}
+{"time":"2024-12-03T21:34:44.296410407+01:00","level":"INFO","msg":"Stopping system monitor"}
+{"time":"2024-12-03T21:34:44.297630189+01:00","level":"INFO","msg":"Stopped system monitor"}
+{"time":"2024-12-03T21:34:47.030586185+01:00","level":"INFO","msg":"fileTransfer: Close: file transfer manager closed"}
+{"time":"2024-12-03T21:34:47.500316184+01:00","level":"INFO","msg":"handler: closed","stream_id":"fddw4zfr"}
+{"time":"2024-12-03T21:34:47.500329997+01:00","level":"INFO","msg":"writer: Close: closed","stream_id":"fddw4zfr"}
+{"time":"2024-12-03T21:34:47.50038746+01:00","level":"INFO","msg":"sender: closed","stream_id":"fddw4zfr"}
+{"time":"2024-12-03T21:34:47.503393742+01:00","level":"INFO","msg":"stream: closed","id":"fddw4zfr"}

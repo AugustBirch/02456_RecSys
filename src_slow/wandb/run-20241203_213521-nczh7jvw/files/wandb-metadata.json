@@ -1,0 +1,49 @@
+{
+  "os": "Linux-6.1.118-1.el9.elrepo.x86_64-x86_64-with-glibc2.34",
+  "python": "3.10.14",
+  "startedAt": "2024-12-03T20:35:21.168809Z",
+  "program": "/work3/s204129/DL2024/02456_RecSys/src_slow/train.py",
+  "codePath": "src_slow/train.py",
+  "git": {
+    "remote": "https://github.com/AugustBirch/02456_RecSys.git",
+    "commit": "6f7cd504217b2349548ebe31c5a4cfab98972f67"
+  },
+  "email": "augbirch@gmail.com",
+  "root": "/work3/s204129/DL2024/02456_RecSys/src_slow",
+  "host": "n-62-20-1",
+  "username": "s204129",
+  "executable": "/work3/s204129/DL2024/venv/bin/python3",
+  "codePathLocal": "train.py",
+  "cpu_count": 24,
+  "cpu_count_logical": 24,
+  "gpu": "Tesla V100-PCIE-16GB",
+  "gpu_count": 2,
+  "disk": {
+    "/": {
+      "total": "76817485824",
+      "used": "5942116352"
+    }
+  },
+  "memory": {
+    "total": "201904594944"
+  },
+  "cpu": {
+    "count": 24,
+    "countLogical": 24
+  },
+  "gpu_nvidia": [
+    {
+      "name": "Tesla V100-PCIE-16GB",
+      "memoryTotal": "17179869184",
+      "cudaCores": 5120,
+      "architecture": "Volta"
+    },
+    {
+      "name": "Tesla V100-PCIE-16GB",
+      "memoryTotal": "17179869184",
+      "cudaCores": 5120,
+      "architecture": "Volta"
+    }
+  ],
+  "cudaVersion": "12.7"
+}
