@@ -70,13 +70,12 @@ df_valid_behaviors = filter_invalid_clicked_articles(df_valid_behaviors)
 
 print("Data loaded successfully")
 
-epochs_num = 10                 # Number of times the model will iterate over the entire training dataset
-
 # DEFINE ALL THE HYPERPARAMETERS
-embedding_dim = 250             # Dimension of the article embedding vectors          
+embedding_dim = 300             # NOT USED.  Dimension of the article embedding vectors            
 num_heads = 16                  # Number of attention heads in the attention layer
 attention_dim = 32              # Dimension of the attention space
-batch_size = 64                 # Number of samples used in each training iteration
+batch_size = 64                 # NOT USED.  Number of samples used in each training iteration
+epochs_num = 10                 # Number of times the model will iterate over the entire training dataset
 initial_learning_rate=0.001     # Initial value of learning rate (learning rate is dynamically set by the scheduler)
 max_history_length = 32         # Maximum length of user history considered by the model
 max_articles_in_view = 10       # Maximum number of articles in a user's viewing session (if applicable)
@@ -100,21 +99,18 @@ embedding_matrix = np.zeros((num_articles, embedding_dim))
 
 # Puopulate the embedding matrix
 for idx, row in embedding_df.iterrows():
-    embedding_matrix[article_to_index[row['article_id']]] = row['document_vector'][:embedding_dim]
+    embedding_matrix[article_to_index[row['article_id']]] = np.array(row['document_vector'])
 print("Embeddings loaded successfully")
 
 train_dataset, train_user_histories_tensor, user_id_to_index = prepare_data(df_train_history, df_train_behaviors, 
                                                                             df_train_articles, article_to_index, 
                                                                             embedding_matrix, max_history_length, 
-                                                                            popularity_window_hours, top_N_popular_articles, batch_size
-                                                                            # ,is_training=True #not used
-                                                                            )
+                                                                            popularity_window_hours, top_N_popular_articles, 
+                                                                            is_training=True)
 
 validation_dataset, _, _ = prepare_data(df_valid_history, df_valid_behaviors, 
                                         df_valid_articles, article_to_index, embedding_matrix, max_history_length, 
-                                        popularity_window_hours, top_N_popular_articles, batch_size
-                                        # , is_training=False #not used
-                                        )
+                                        popularity_window_hours, top_N_popular_articles, is_training=False)
 
 # Create a model instance
 model = NewsRecommendationModel(

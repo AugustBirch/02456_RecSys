@@ -102,8 +102,8 @@ train_dataset, train_user_histories_tensor, user_id_to_index = prepare_data(df_t
 print("Train dataset prepared successfully")
 validation_dataset, _, _ = prepare_data(df_valid_history, df_valid_behaviors, df_valid_articles, article_to_index, embedding_matrix, max_history_length, is_training=False)
 print("Validation dataset prepared successfully")
-test_dataset, _, _ = prepare_data(df_test_history, df_test_behaviors, df_test_articles, article_to_index, embedding_matrix, max_history_length, is_training=False)
-print("Datasets prepared successfully")
+# test_dataset, _, _ = prepare_data(df_test_history, df_test_behaviors, df_test_articles, article_to_index, embedding_matrix, max_history_length, is_training=False)
+# print("Datasets prepared successfully")
 
 # Create a model instance
 model = NewsRecommendationModel(

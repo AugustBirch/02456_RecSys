@@ -287,7 +287,6 @@ def create_tf_dataset(df_labeled_sessions, user_id_to_index, batch_size):
         in_session_embeddings = tf.convert_to_tensor(in_session_embeddings, dtype=tf.float32)
         labels = tf.convert_to_tensor(labels, dtype=tf.int32) # Assuming labels are integers
     """
-    
 
     dataset = tf.data.Dataset.from_tensor_slices(
         ((user_indices, article_embeddings, in_session_embeddings, popularity_embeddings), labels)
@@ -460,7 +459,6 @@ class NewsRecommendationModel(Model):
         click_probabilities_flat = self.click_predictor(article_flat)  # Shape: (batch_size * num_articles, 1)
         click_probabilities = tf.reshape(click_probabilities_flat, [batch_size, num_articles])  # Shape: (batch_size, num_articles)
 
-        #print click_probabilities every thousand time this function is called
         return click_probabilities
 
 

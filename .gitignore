@@ -1,3 +1,4 @@
 __pycache__
 #wandb files
 wandb
+src_slow/wandb

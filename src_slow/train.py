@@ -129,12 +129,22 @@ def objective(trial):
     return val_auc
 
 study = optuna.create_study(direction="maximize")
-study.optimize(objective, n_trials=N_trials, timeout=3600)
+study.optimize(objective, n_trials=N_trials, timeout=36000)
 
 print("Best Trial:")
 trial = study.best_trial
-wandb.log({"best_trial_value": trial.value, "best_trial_params": trial.params})
+
+
+# Log the best trial to a new WandB run
+wandb.init(project=WANDB_PROJECT, entity=WANDB_ENTITY, name="best_trial_summary", config={})
+wandb.log({
+    "best_trial_value": trial.value,
+    "best_trial_params": trial.params
+})
+wandb.finish()
+
 print(f"Best Trial Value: {trial.value}")
 print("Best Trial Parameters:")
 for key, value in trial.params.items():
     print(f"  {key}: {value}")
+
